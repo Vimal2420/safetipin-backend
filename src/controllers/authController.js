@@ -43,8 +43,8 @@ export const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(userData.password, salt);
 
-        // Automate username if missing
-        const username = userData.username || `${userData.name.toLowerCase().replace(/\s+/g, '')}_${Math.random().toString(36).substring(7)}`;
+        // Automate username if missing: name + random 4-digit number
+        const username = userData.username || `${userData.name.toLowerCase().replace(/\s+/g, '')}${Math.floor(1000 + Math.random() * 9000)}`;
 
         const user = new User({
             ...userData,
