@@ -281,9 +281,9 @@ export const toggleOnlineStatus = async (req, res) => {
 // @access  Private (Authority only)
 export const getPendingProfileUpdates = async (req, res) => {
   try {
-    const users = await User.find({ 'pendingUpdate': { $exists: true, $ne: null } })
+    const users = await User.find({ 'pendingUpdate.submittedAt': { $exists: true } })
       .select('name email phone address pendingUpdate profilePhoto userId');
-    res.json(users);
+    res.json({ success: true, data: users });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -367,7 +367,7 @@ export const getUnapprovedVolunteers = async (req, res) => {
   try {
     const users = await User.find({ role: 'volunteer', isApproved: false })
       .select('name email phone permanentAddress currentAddressString aadhaarNumber createdAt userId');
-    res.json(users);
+    res.json({ success: true, data: users });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

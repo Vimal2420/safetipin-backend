@@ -329,11 +329,12 @@ const joinAlert = async (req, res) => {
     }
 
     await alert.save();
+    const populatedAlert = await Alert.findById(alert._id).populate('user', 'name phone');
 
     res.json({
       success: true,
       message: 'Successfully joined the rescue team',
-      data: alert
+      data: populatedAlert
     });
   } catch (error) {
     res.status(400).json({
