@@ -21,6 +21,11 @@ const checkInRequestSchema = new mongoose.Schema(
       enum: ['pending', 'confirmed', 'missed'],
       default: 'pending',
     },
+    type: {
+      type: String,
+      enum: ['auto', 'manual'],
+      default: 'manual',
+    },
   },
   {
     timestamps: true,

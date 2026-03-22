@@ -59,7 +59,14 @@ export const getActiveSessions = async (req, res) => {
     }));
 
     // 5. Combine and return
-    const finalSessions = [...travelSessions, ...mappedGuarding];
+    const combined = [...travelSessions, ...mappedGuarding];
+    
+    // Sort by latest update first
+    const finalSessions = combined.sort((a, b) => {
+      const dateA = new Date(a.lastLocationUpdate || a.startTime);
+      const dateB = new Date(b.lastLocationUpdate || b.startTime);
+      return dateB - dateA;
+    });
 
     res.json({ success: true, data: finalSessions });
   } catch (error) {
@@ -129,7 +136,9 @@ export const getLiveLocation = async (req, res) => {
         latitude: latest.latitude,
         longitude: latest.longitude,
         timestamp: latest.timestamp,
-        path: history.reverse()
+        path: history.reverse(),
+        destination: session.destination,
+        routePoints: session.routePoints || []
       }
     });
   } catch (error) {
@@ -202,22 +211,42 @@ export const sendCheckInRequest = async (req, res) => {
     const checkIn = await CheckInRequest.create({
       sessionId,
       trustedContactId: req.user._id,
-      status: 'pending'
+      status: 'pending',
+      type: req.body.type || 'manual'
     });
 
     // Mock Notification logic
-    console.log(`🔔 Check-in request sent to user ${session.userId} for session ${sessionId}`);
+    console.log(`🔔 [${checkIn.type.toUpperCase()}] Check-in request sent to user ${session.userId} for session ${sessionId}`);
 
     // Logic for timeout (3 minutes)
     setTimeout(async () => {
-      const currentReq = await CheckInRequest.findById(checkIn._id);
-      if (currentReq && currentReq.status === 'pending') {
-        currentReq.status = 'missed';
-        await currentReq.save();
-        
-        // Update session status
-        await TravelSession.findByIdAndUpdate(sessionId, { status: 'missed-checkin' });
-        console.log(`⚠️ Check-in MISSED for session ${sessionId}. Alerting trusted contacts.`);
+      try {
+        const currentReq = await CheckInRequest.findById(checkIn._id);
+        if (currentReq && currentReq.status === 'pending') {
+          currentReq.status = 'missed';
+          await currentReq.save();
+          
+          // Update session status
+          const missedSession = await TravelSession.findByIdAndUpdate(
+            sessionId, 
+            { status: 'missed-checkin' }, 
+            { new: true }
+          );
+          
+          // Notify all trusted contacts about the miss
+          if (missedSession) {
+            const trustedLinks = await TrustedContact.find({ 
+              ownerUserId: missedSession.userId 
+            }).populate('trustedUserId', 'name phone');
+            
+            console.log(`⚠️ [MISSED CHECK-IN] Session: ${sessionId} | User: ${missedSession.userId}`);
+            trustedLinks.forEach(link => {
+              console.log(`  📱 Notifying: ${link.trustedUserId?.name} (${link.trustedUserId?.phone}) — "User missed a check-in. Please verify they are safe."`);
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Check-in timeout handler error:', e.message);
       }
     }, 3 * 60 * 1000); // 3 minutes
 
@@ -274,6 +303,7 @@ export const startSession = async (req, res) => {
         type: 'Point',
         coordinates: [lng || 0, lat || 0]
       },
+      routePoints: req.body.routePoints || [],
       status: 'active'
     });
 

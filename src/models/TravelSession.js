@@ -41,6 +41,12 @@ const travelSessionSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    routePoints: [
+      {
+        lat: Number,
+        lng: Number,
+      }
+    ],
   },
   {
     timestamps: true,
