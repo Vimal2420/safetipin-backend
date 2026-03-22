@@ -15,7 +15,7 @@ export const getResources = async (req, res) => {
     
     // For 'haven', we'll search ONLY Google Places (User requested no mock data)
     const dbResources = await Resource.find(dbQuery);
-    console.log(`Resources found in DB for type "${type || 'all'}": ${dbResources.length}`);
+    console.log(`[Resources] DB Query for "${type || 'all'}": ${dbResources.length} found`);
     let finalResources = [...dbResources];
 
     // 2. Fetch Live "Safe Havens" from Google Places if coordinates provided
@@ -28,61 +28,66 @@ export const getResources = async (req, res) => {
           const liveHavens = [];
 
           for (const placeType of typesToSearch) {
-            const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${placeType}&key=${apiKey}`;
-            const response = await fetch(placesUrl);
-            const data = await response.json();
+            try {
+              const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${placeType}&key=${apiKey}`;
+              const response = await fetch(placesUrl);
+              const data = await response.json();
 
-            if (data.status === 'OK' && data.results) {
-              console.log(`Found ${data.results.length} results for type: ${placeType}`);
-              data.results.forEach(place => {
-                let category = 'Safe Haven';
-                let icon = 'night_shelter';
-                let color = '#F8FAFC';
-                let iconColor = '#64748B';
+              if (data.status === 'OK' && data.results) {
+                console.log(`[GooglePlaces] Found ${data.results.length} results for: ${placeType}`);
+                data.results.forEach(place => {
+                  // ... mapping logic remains same ...
+                  let category = 'Safe Haven';
+                  let icon = 'night_shelter';
+                  let color = '#F8FAFC';
+                  let iconColor = '#64748B';
 
-                if (placeType === 'police') {
-                  category = 'Police';
-                  icon = 'verified_user';
-                  color = '#EFF6FF';
-                  iconColor = '#2563EB';
-                } else if (placeType === 'hospital') {
-                  category = 'Hospital';
-                  icon = 'favorite';
-                  color = '#F0FDF4';
-                  iconColor = '#16A34A';
-                } else if (['shopping_mall', 'transit_station', 'bus_station', 'subway_station'].includes(placeType)) {
-                  category = 'Crowded Place';
-                  icon = 'visibility';
-                  color = '#FFF7ED';
-                  iconColor = '#EA580C';
-                }
-
-                liveHavens.push({
-                  _id: place.place_id,
-                  title: place.name,
-                  subtitle: place.vicinity || 'Nearby',
-                  type: 'haven',
-                  category,
-                  icon,
-                  color,
-                  iconColor,
-                  status: place.opening_hours?.open_now ? 'Open Now' : 'Closed/Unknown',
-                  location: {
-                    type: 'Point',
-                    coordinates: [place.geometry.location.lng, place.geometry.location.lat],
-                    address: place.vicinity
+                  if (placeType === 'police') {
+                    category = 'Police';
+                    icon = 'verified_user';
+                    color = '#EFF6FF';
+                    iconColor = '#2563EB';
+                  } else if (placeType === 'hospital') {
+                    category = 'Hospital';
+                    icon = 'favorite';
+                    color = '#F0FDF4';
+                    iconColor = '#16A34A';
+                  } else if (['shopping_mall', 'transit_station', 'bus_station', 'subway_station'].includes(placeType)) {
+                    category = 'Crowded Place';
+                    icon = 'visibility';
+                    color = '#FFF7ED';
+                    iconColor = '#EA580C';
                   }
+
+                  liveHavens.push({
+                    _id: place.place_id,
+                    title: place.name,
+                    subtitle: place.vicinity || 'Nearby',
+                    type: 'haven',
+                    category,
+                    icon,
+                    color,
+                    iconColor,
+                    status: place.opening_hours?.open_now ? 'Open Now' : 'Closed/Unknown',
+                    location: {
+                      type: 'Point',
+                      coordinates: [place.geometry.location.lng, place.geometry.location.lat],
+                      address: place.vicinity
+                    }
+                  });
                 });
-              });
-            } else if (data.status !== 'ZERO_RESULTS') {
-              console.warn(`Google Places API Status for ${placeType}: ${data.status}`);
-              if (data.error_message) console.warn(`Error Message: ${data.error_message}`);
+              } else if (data.status !== 'ZERO_RESULTS') {
+                console.warn(`[GooglePlaces] API Status for ${placeType}: ${data.status}`);
+                if (data.error_message) console.warn(`[GooglePlaces] Error: ${data.error_message}`);
+              }
+            } catch (innerError) {
+              console.error(`[GooglePlaces] Loop Error for ${placeType}:`, innerError);
+              // Continue to next place type
             }
           }
           finalResources = [...liveHavens, ...finalResources];
         } catch (error) {
-          console.error('Google Places API Error:', error);
-          // Fallback to whatever is in DB (empty list for havens)
+          console.error('[GooglePlaces] Main Fetch Error:', error);
         }
       }
     }

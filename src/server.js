@@ -84,6 +84,8 @@ app.get('/api/health', async (req, res) => {
   try {
     const isAtlas = mongoose.connection.host.includes('mongodb.net');
     const userCount = await User.countDocuments();
+    const resourceCount = await mongoose.model('Resource').countDocuments();
+    const incidentCount = await mongoose.model('Incident').countDocuments();
     const dbName = mongoose.connection.name;
 
     res.status(200).json({
@@ -92,6 +94,8 @@ app.get('/api/health', async (req, res) => {
       database: isAtlas ? 'Atlas (Production)' : 'In-Memory (Empty/Testing)',
       db_name: dbName,
       users_in_db: userCount,
+      resources_in_db: resourceCount,
+      incidents_in_db: incidentCount,
       host: mongoose.connection.host,
       timestamp: new Date()
     });
