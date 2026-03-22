@@ -78,6 +78,17 @@ app.get('/', (req, res) => {
   res.send('Women Safety API is running...');
 });
 
+app.get('/api/health', (req, res) => {
+  const isAtlas = mongoose.connection.host.includes('mongodb.net');
+  res.status(200).json({
+    status: 'running',
+    message: 'Women Safety API is running...',
+    database: isAtlas ? 'Atlas (Production)' : 'In-Memory (Empty/Testing)',
+    host: mongoose.connection.host,
+    timestamp: new Date()
+  });
+});
+
 // 404 Handler - MUST be after all routes
 app.use((req, res, next) => {
   res.status(404).json({
