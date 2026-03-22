@@ -282,6 +282,26 @@ export const updateLocation = async (req, res) => {
   }
 };
 
+// @desc    Update route points for a session (called after directions are fetched)
+// @route   POST /api/trusted-dashboard/session/update-route
+// @access  Private
+export const updateRoutePoints = async (req, res) => {
+  try {
+    const { sessionId, routePoints } = req.body;
+    const session = await TravelSession.findOneAndUpdate(
+      { _id: sessionId, userId: req.user._id },
+      { routePoints: routePoints || [] },
+      { returnDocument: 'after' }
+    );
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Active session not found for this user' });
+    }
+    res.json({ success: true, data: session });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Start a travel session
 // @route   POST /api/trusted-dashboard/session/start
 // @access  Private

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import Authority from '../models/Authority.js';
 import { sendSMS } from '../utils/mail.js';
 
 // Generate JWT Token
@@ -91,7 +92,7 @@ export const register = async (req, res) => {
 export const sendOtp = async (req, res) => res.status(200).json({ message: 'OTP disabled. Use login/register.' });
 export const verifyOtp = async (req, res) => res.status(200).json({ message: 'OTP disabled. Use login/register.' });
 
-// @desc    Direct Password Login (Used by Police, and as step 1 for others)
+// @desc    Direct Password Login (Police, Volunteers, Users)
 // @route   POST /api/auth/login
 export const login = async (req, res) => {
     try {
@@ -101,48 +102,62 @@ export const login = async (req, res) => {
             return res.status(400).json({ message: 'Identifier and password are required' });
         }
 
+        // Build multi-field query (phone, username, email)
         let query = [
             { phone: identifier },
             { username: identifier },
             { email: identifier }
         ];
 
+        // If bare 10-digit number, also try with +91 prefix
         if (/^\d{10}$/.test(identifier)) {
             query.push({ phone: `+91${identifier}` });
         }
 
-        const user = await User.findOne({ $or: query }).select('+passwordHash');
+        // 1. Try regular User collection (users & volunteers)
+        let account = await User.findOne({ $or: query }).select('+passwordHash');
+        let role = account?.role || null;
 
-        if (!user) {
+        // 2. If not found, try Authority (Police) collection
+        if (!account) {
+            account = await Authority.findOne({ $or: query }).select('+passwordHash');
+            if (account) role = 'police';
+        }
+
+        if (!account) {
+            console.log(`[AUTH] Login failed: No account for "${identifier}"`);
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.passwordHash);
+        const isMatch = await bcrypt.compare(password, account.passwordHash);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // If user is volunteer and not approved
-        if (user.role === 'volunteer' && !user.isApproved) {
+        // If volunteer and not approved
+        if (role === 'volunteer' && !account.isApproved) {
             return res.status(403).json({ 
                 message: 'Your account is pending authority approval.',
                 isPendingApproval: true 
             });
         }
 
+        console.log(`[AUTH] Login success: ${account.phone} (${role})`);
+
         res.status(200).json({
             message: 'Login successful',
-            _id: user._id,
-            userId: user.userId,
-            name: user.name,
-            username: user.username,
-            gender: user.gender,
-            phone: user.phone,
-            role: user.role,
-            token: generateToken(user._id),
+            _id: account._id,
+            userId: account.userId,
+            name: account.name,
+            username: account.username,
+            gender: account.gender,
+            phone: account.phone,
+            role: role,
+            token: generateToken(account._id),
         });
 
     } catch (error) {
+        console.error('[AUTH ERROR] Login failed:', error.message);
         res.status(500).json({ message: error.message });
     }
 };

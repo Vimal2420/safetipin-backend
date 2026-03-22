@@ -5,6 +5,7 @@ import {
   getUserContact,
   sendCheckInRequest,
   updateLocation,
+  updateRoutePoints,
   startSession,
   stopSession,
   updateSessionStatus,
@@ -21,6 +22,7 @@ router.get('/session/live-location/:sessionId', getLiveLocation);
 router.get('/user/contact/:sessionId', getUserContact);
 router.post('/session/checkin-request', sendCheckInRequest);
 router.post('/session/update-location', updateLocation);
+router.post('/session/update-route', updateRoutePoints);
 router.post('/session/start', startSession);
 router.post('/session/stop/:sessionId', stopSession);
 router.post('/session/status', updateSessionStatus);
