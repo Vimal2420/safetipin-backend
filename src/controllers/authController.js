@@ -121,7 +121,7 @@ export const login = async (req, res) => {
         // 2. If not found, try Authority (Police) collection
         if (!account) {
             account = await Authority.findOne({ $or: query }).select('+passwordHash');
-            if (account) role = 'police';
+            if (account) role = 'authority';
         }
 
         if (!account) {

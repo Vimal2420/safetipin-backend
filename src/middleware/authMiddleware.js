@@ -25,7 +25,7 @@ export const protect = async (req, res, next) => {
         let authUser = await Authority.findByMongoId(decoded.id).select('-passwordHash');
         if (authUser) {
           // Add role property so subsequent controllers know treating it like a user
-          req.user = Object.assign(authUser.toObject(), { role: 'police', _id: authUser._id });
+          req.user = Object.assign(authUser.toObject(), { role: 'authority', _id: authUser._id });
         }
       }
 
