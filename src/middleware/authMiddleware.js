@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Authority from '../models/Authority.js';
+import Volunteer from '../models/Volunteer.js';
 
 export const protect = async (req, res, next) => {
   let token;
@@ -20,7 +21,15 @@ export const protect = async (req, res, next) => {
       // Get user from token and attach to request
       req.user = await User.findUserByMongoId(decoded.id).select('-passwordHash');
 
-      // If not found in User, try Authority (Police)
+      // If not found in User, try Volunteer
+      if (!req.user) {
+        let volUser = await Volunteer.findByMongoId(decoded.id).select('-passwordHash');
+        if (volUser) {
+          req.user = Object.assign(volUser.toObject(), { role: 'volunteer', _id: volUser._id });
+        }
+      }
+
+      // If not found in Volunteer either, try Authority (Police)
       if (!req.user) {
         let authUser = await Authority.findByMongoId(decoded.id).select('-passwordHash');
         if (authUser) {

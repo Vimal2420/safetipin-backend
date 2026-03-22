@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Authority from '../models/Authority.js';
+import Volunteer from '../models/Volunteer.js';
 import { sendSMS } from '../utils/mail.js';
 
 // Generate JWT Token
@@ -114,11 +115,17 @@ export const login = async (req, res) => {
             query.push({ phone: `+91${identifier}` });
         }
 
-        // 1. Try regular User collection (users & volunteers)
+        // 1. Try regular User collection
         let account = await User.findOne({ $or: query }).select('+passwordHash');
-        let role = account?.role || null;
+        let role = account?.role || 'user';
 
-        // 2. If not found, try Authority (Police) collection
+        // 2. If not found, try Volunteer collection
+        if (!account) {
+            account = await Volunteer.findOne({ $or: query }).select('+passwordHash');
+            if (account) role = 'volunteer';
+        }
+
+        // 3. If not found, try Authority (Police) collection
         if (!account) {
             account = await Authority.findOne({ $or: query }).select('+passwordHash');
             if (account) role = 'authority';
