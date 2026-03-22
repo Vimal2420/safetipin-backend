@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Authority from '../models/Authority.js';
 
 export const protect = async (req, res, next) => {
   let token;
@@ -18,6 +19,15 @@ export const protect = async (req, res, next) => {
 
       // Get user from token and attach to request
       req.user = await User.findUserByMongoId(decoded.id).select('-passwordHash');
+
+      // If not found in User, try Authority (Police)
+      if (!req.user) {
+        let authUser = await Authority.findByMongoId(decoded.id).select('-passwordHash');
+        if (authUser) {
+          // Add role property so subsequent controllers know treating it like a user
+          req.user = Object.assign(authUser.toObject(), { role: 'police', _id: authUser._id });
+        }
+      }
 
       if (!req.user) {
         return res.status(401).json({ message: 'User not found for this token' });
