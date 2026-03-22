@@ -24,5 +24,8 @@
     "twilio": "^5.13.0",
     "uuid": "^13.0.0"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
