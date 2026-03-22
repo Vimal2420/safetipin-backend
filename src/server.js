@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import path from 'path';
@@ -15,6 +16,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import trustedRoutes from './routes/trustedRoutes.js';
 import policeRoutes from './routes/policeRoutes.js';
 import seedDatabase from './utils/seeder.js';
+import User from './models/User.js';
 
 // Load env vars
 dotenv.config();
@@ -78,15 +80,24 @@ app.get('/', (req, res) => {
   res.send('Women Safety API is running...');
 });
 
-app.get('/api/health', (req, res) => {
-  const isAtlas = mongoose.connection.host.includes('mongodb.net');
-  res.status(200).json({
-    status: 'running',
-    message: 'Women Safety API is running...',
-    database: isAtlas ? 'Atlas (Production)' : 'In-Memory (Empty/Testing)',
-    host: mongoose.connection.host,
-    timestamp: new Date()
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const isAtlas = mongoose.connection.host.includes('mongodb.net');
+    const userCount = await User.countDocuments();
+    const dbName = mongoose.connection.name;
+
+    res.status(200).json({
+      status: 'running',
+      message: 'Women Safety API is running...',
+      database: isAtlas ? 'Atlas (Production)' : 'In-Memory (Empty/Testing)',
+      db_name: dbName,
+      users_in_db: userCount,
+      host: mongoose.connection.host,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // 404 Handler - MUST be after all routes
