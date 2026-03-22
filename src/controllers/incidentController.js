@@ -54,8 +54,13 @@ const createIncident = async (req, res) => {
 // @access  Private/Role-aware
 const getIncidents = async (req, res) => {
   try {
-    const { lat, lng, radius = 5000 } = req.query; // Default 5km radius
+    const { lat, lng, radius = 5000, hours } = req.query; // Default 5km radius
     let query = {};
+
+    if (hours) {
+      const timeAgo = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
+      query.createdAt = { $gte: timeAgo };
+    }
 
     if (lat && lng) {
       query['location.coordinates'] = {
@@ -105,8 +110,13 @@ const getMyIncidents = async (req, res) => {
 // @access  Private
 const getMapIncidents = async (req, res) => {
   try {
-    const { lat, lng, radius = 5000 } = req.query;
+    const { lat, lng, radius = 5000, hours } = req.query;
     let query = {};
+
+    if (hours) {
+      const timeAgo = new Date(Date.now() - parseInt(hours) * 60 * 60 * 1000);
+      query.createdAt = { $gte: timeAgo };
+    }
 
     if (lat && lng) {
       query['location.coordinates'] = {

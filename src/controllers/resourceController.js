@@ -5,7 +5,7 @@ import Resource from '../models/Resource.js';
 // @access  Public
 export const getResources = async (req, res) => {
   try {
-    const { type, lat, lng, radius = 10000 } = req.query; // Default 10km for live search
+    const { type, lat, lng, radius = 5000 } = req.query; // Default 5km for live search
     
     // 1. Fetch static resources (Guides & Helplines) from Database
     let dbQuery = {};
